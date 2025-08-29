@@ -35,15 +35,15 @@ def main():
         print("Please make sure you're in the correct directory.")
         sys.exit(1)
     
-    print("🚀 Starting the application...")
-    print("📱 Open your browser and go to: http://localhost:5000")
-    print("⏹️  Press Ctrl+C to stop the application")
+            print("🚀 Starting the application...")
+        print("📱 Open your browser and go to: http://localhost:8080")
+        print("⏹️  Press Ctrl+C to stop the application")
     print("-" * 40)
     
     try:
         # Import and run the Flask app
         from app import app
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=True, host='0.0.0.0', port=8080)
     except KeyboardInterrupt:
         print("\n👋 Application stopped by user")
     except Exception as e:

@@ -37,7 +37,7 @@ A modern web application that converts audio files to text using OpenAI's Whispe
    ```
 
 4. **Open your browser**
-   Navigate to `http://localhost:5000`
+   Navigate to `http://localhost:8080`
 
 ## 📁 Project Structure
 
@@ -100,7 +100,7 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
 python app.py
 ```
 
-The app runs in debug mode by default on `http://localhost:5000`
+The app runs in debug mode by default on `http://localhost:8080`
 
 ### Production Deployment
 
