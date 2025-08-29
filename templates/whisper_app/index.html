@@ -1,0 +1,253 @@
+{% extends 'whisper_app/base.html' %}
+{% load static %}
+
+{% block title %}Audio to Text Converter - OpenAI Whisper{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero">
+        <h1 class="hero-title">🎵 Audio to Text Converter</h1>
+        <p class="hero-subtitle">Convert your audio files to text using OpenAI's Whisper</p>
+    </div>
+    
+    <div class="upload-section">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">🎤</div>
+            <div class="upload-text">Drop your audio file here</div>
+            <div class="upload-hint">or click to browse</div>
+            <input type="file" class="file-input" id="fileInput" accept="audio/*">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <button class="convert-btn" id="convertBtn" disabled>Convert to Text</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Converting audio to text...</div>
+        </div>
+
+        <div class="result" id="result">
+            <div class="result-title">Transcription Result:</div>
+            <div class="transcription-text" id="transcriptionText"></div>
+            <div class="result-actions">
+                <button class="copy-btn" id="copyBtn">Copy to Clipboard</button>
+                <a href="#" class="save-btn" id="saveBtn" target="_blank">Save to History</a>
+            </div>
+        </div>
+
+        <div class="error" id="error"></div>
+    </div>
+
+    <div class="features">
+        <h2>Supported Audio Formats</h2>
+        <div class="format-grid">
+            <div class="format-card">
+                <div class="format-icon">🎵</div>
+                <h3>WAV</h3>
+                <p>Uncompressed audio</p>
+            </div>
+            <div class="format-card">
+                <div class="format-icon">🎧</div>
+                <h3>MP3</h3>
+                <p>Compressed audio</p>
+            </div>
+            <div class="format-card">
+                <div class="format-icon">🍎</div>
+                <h3>M4A</h3>
+                <p>Apple audio format</p>
+            </div>
+            <div class="format-card">
+                <div class="format-icon">🎼</div>
+                <h3>FLAC</h3>
+                <p>Lossless compression</p>
+            </div>
+            <div class="format-card">
+                <div class="format-icon">🔊</div>
+                <h3>OGG</h3>
+                <p>Open source format</p>
+            </div>
+            <div class="format-card">
+                <div class="format-icon">🎶</div>
+                <h3>AAC</h3>
+                <p>Advanced audio coding</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="cta">
+        <h2>Ready to get started?</h2>
+        <p>Upload your first audio file and experience the power of AI transcription!</p>
+        <a href="{% url 'whisper_app:history' %}" class="btn btn-secondary">View History</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const convertBtn = document.getElementById('convertBtn');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+    const transcriptionText = document.getElementById('transcriptionText');
+    const copyBtn = document.getElementById('copyBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const error = document.getElementById('error');
+
+    let selectedFile = null;
+    let currentTranscriptionId = null;
+
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    // Click to upload
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    function handleFile(file) {
+        if (!file.type.startsWith('audio/')) {
+            showError('Please select an audio file.');
+            return;
+        }
+
+        selectedFile = file;
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileInfo.classList.add('show');
+        convertBtn.classList.add('active');
+        convertBtn.disabled = false;
+        hideError();
+        hideResult();
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Convert button click
+    convertBtn.addEventListener('click', async () => {
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append('audio', selectedFile);
+
+        showLoading();
+        hideError();
+        hideResult();
+
+        try {
+            const response = await fetch('{% url "whisper_app:upload_audio" %}', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                currentTranscriptionId = data.transcription_id;
+                showResult(data.transcription, data.processing_time);
+                updateSaveButton();
+            } else {
+                showError(data.error || 'Conversion failed');
+            }
+        } catch (err) {
+            showError('Network error: ' + err.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
+    // Copy button
+    copyBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(transcriptionText.textContent);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copy to Clipboard';
+            }, 2000);
+        } catch (err) {
+            showError('Failed to copy to clipboard');
+        }
+    });
+
+    function updateSaveButton() {
+        if (currentTranscriptionId) {
+            saveBtn.href = `{% url 'whisper_app:detail' 0 %}`.replace('0', currentTranscriptionId);
+            saveBtn.style.display = 'inline-block';
+        }
+    }
+
+    function showLoading() {
+        loading.classList.add('show');
+        convertBtn.disabled = true;
+    }
+
+    function hideLoading() {
+        loading.classList.remove('show');
+        convertBtn.disabled = false;
+    }
+
+    function showResult(text, processingTime) {
+        transcriptionText.textContent = text;
+        if (processingTime) {
+            const timeDisplay = document.createElement('div');
+            timeDisplay.className = 'processing-time';
+            timeDisplay.textContent = `Processing time: ${processingTime.toFixed(2)} seconds`;
+            result.appendChild(timeDisplay);
+        }
+        result.classList.add('show');
+    }
+
+    function hideResult() {
+        result.classList.remove('show');
+        const timeDisplay = result.querySelector('.processing-time');
+        if (timeDisplay) {
+            timeDisplay.remove();
+        }
+    }
+
+    function showError(message) {
+        error.textContent = message;
+        error.classList.add('show');
+    }
+
+    function hideError() {
+        error.classList.remove('show');
+    }
+</script>
+{% endblock %}

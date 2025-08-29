@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Audio to Text Converter - OpenAI Whisper{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="{% url 'whisper_app:index' %}">🎵 Whisper</a>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="{% url 'whisper_app:index' %}">Home</a></li>
+                    <li><a href="{% url 'whisper_app:history' %}">History</a></li>
+                    <li><a href="{% url 'admin:index' %}">Admin</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="main">
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="message message-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 Audio to Text Converter. Powered by OpenAI Whisper.</p>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

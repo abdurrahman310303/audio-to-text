@@ -1,0 +1,161 @@
+{% extends 'whisper_app/base.html' %}
+{% load static %}
+
+{% block title %}{{ transcription.original_filename }} - Transcription Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div class="breadcrumb">
+            <a href="{% url 'whisper_app:index' %}">Home</a> &gt;
+            <a href="{% url 'whisper_app:history' %}">History</a> &gt;
+            <span>Details</span>
+        </div>
+        <h1>📄 Transcription Details</h1>
+        <p>Detailed information about your audio transcription</p>
+    </div>
+
+    <div class="detail-grid">
+        <div class="detail-card">
+            <h2>File Information</h2>
+            <div class="info-list">
+                <div class="info-item">
+                    <span class="info-label">File Name:</span>
+                    <span class="info-value">{{ transcription.original_filename }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Format:</span>
+                    <span class="format-badge format-{{ transcription.file_format }}">
+                        {{ transcription.file_format|upper }}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">File Size:</span>
+                    <span class="info-value">{{ transcription.get_file_size_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status:</span>
+                    <span class="status-badge status-{{ transcription.status }}">
+                        {{ transcription.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-card">
+            <h2>Processing Information</h2>
+            <div class="info-list">
+                <div class="info-item">
+                    <span class="info-label">Processing Time:</span>
+                    <span class="info-value">{{ transcription.get_processing_time_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Created:</span>
+                    <span class="info-value">{{ transcription.created_at|date:"F d, Y \a\t H:i" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Last Updated:</span>
+                    <span class="info-value">{{ transcription.updated_at|date:"F d, Y \a\t H:i" }}</span>
+                </div>
+                {% if transcription.confidence_score %}
+                <div class="info-item">
+                    <span class="info-label">Confidence Score:</span>
+                    <span class="info-value">{{ transcription.confidence_score|floatformat:2 }}%</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if transcription.status == 'completed' %}
+        <div class="transcription-result">
+            <h2>Transcription Result</h2>
+            <div class="transcription-content">
+                <div class="transcription-text">{{ transcription.transcription_text|linebreaks }}</div>
+                <div class="transcription-actions">
+                    <button class="btn btn-primary copy-full-text" data-text="{{ transcription.transcription_text }}">
+                        📋 Copy Full Text
+                    </button>
+                    <button class="btn btn-secondary download-text" data-text="{{ transcription.transcription_text }}" data-filename="{{ transcription.original_filename }}">
+                        💾 Download as TXT
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% elif transcription.status == 'failed' %}
+        <div class="error-details">
+            <h2>Error Details</h2>
+            <div class="error-content">
+                <div class="error-message">
+                    <strong>Error:</strong> {{ transcription.error_message }}
+                </div>
+                <div class="error-actions">
+                    <a href="{% url 'whisper_app:index' %}" class="btn btn-primary">Try Again</a>
+                    <a href="{% url 'whisper_app:history' %}" class="btn btn-secondary">Back to History</a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="processing-status">
+            <h2>Processing Status</h2>
+            <div class="status-content">
+                <div class="status-message">
+                    This transcription is currently being processed. Please wait...
+                </div>
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Processing...</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="action-buttons">
+        <a href="{% url 'whisper_app:history' %}" class="btn btn-secondary">← Back to History</a>
+        <a href="{% url 'whisper_app:index' %}" class="btn btn-primary">New Transcription</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Copy full text functionality
+    document.querySelector('.copy-full-text')?.addEventListener('click', async () => {
+        const text = document.querySelector('.copy-full-text').dataset.text;
+        try {
+            await navigator.clipboard.writeText(text);
+            const button = document.querySelector('.copy-full-text');
+            button.textContent = '✅ Copied!';
+            button.classList.add('copied');
+            setTimeout(() => {
+                button.textContent = '📋 Copy Full Text';
+                button.classList.remove('copied');
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy text:', err);
+        }
+    });
+
+    // Download text functionality
+    document.querySelector('.download-text')?.addEventListener('click', () => {
+        const text = document.querySelector('.download-text').dataset.text;
+        const filename = document.querySelector('.download-text').dataset.filename;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.replace(/\.[^/.]+$/, '') + '_transcription.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    });
+
+    // Auto-refresh for processing status
+    {% if transcription.status == 'pending' or transcription.status == 'processing' %}
+    setTimeout(() => {
+        window.location.reload();
+    }, 5000);
+    {% endif %}
+</script>
+{% endblock %}

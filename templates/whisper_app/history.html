@@ -1,0 +1,127 @@
+{% extends 'whisper_app/base.html' %}
+{% load static %}
+
+{% block title %}Transcription History - Audio to Text Converter{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📚 Transcription History</h1>
+        <p>View all your audio transcriptions and their results</p>
+        <a href="{% url 'whisper_app:index' %}" class="btn btn-primary">New Transcription</a>
+    </div>
+
+    {% if transcriptions %}
+        <div class="history-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Format</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                        <th>Processing Time</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transcription in transcriptions %}
+                    <tr class="transcription-row status-{{ transcription.status }}">
+                        <td>
+                            <div class="file-info-cell">
+                                <span class="file-icon">🎵</span>
+                                <span class="file-name">{{ transcription.original_filename }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="format-badge format-{{ transcription.file_format }}">
+                                {{ transcription.file_format|upper }}
+                            </span>
+                        </td>
+                        <td>{{ transcription.get_file_size_display }}</td>
+                        <td>
+                            <span class="status-badge status-{{ transcription.status }}">
+                                {{ transcription.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ transcription.get_processing_time_display }}</td>
+                        <td>{{ transcription.created_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                {% if transcription.status == 'completed' %}
+                                    <a href="{% url 'whisper_app:detail' transcription.id %}" 
+                                       class="btn btn-small btn-primary">View</a>
+                                    <button class="btn btn-small btn-secondary copy-text" 
+                                            data-text="{{ transcription.transcription_text }}">Copy</button>
+                                {% elif transcription.status == 'failed' %}
+                                    <span class="error-tooltip" title="{{ transcription.error_message }}">
+                                        <button class="btn btn-small btn-danger">Error</button>
+                                    </span>
+                                {% else %}
+                                    <span class="status-indicator">{{ transcription.get_status_display }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="history-stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ transcriptions|length }}</div>
+                <div class="stat-label">Total Transcriptions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ transcriptions|dictsort:"status"|length }}</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ transcriptions|dictsort:"status"|length }}</div>
+                <div class="stat-label">Failed</div>
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <h2>No transcriptions yet</h2>
+            <p>Start by uploading your first audio file to see it here.</p>
+            <a href="{% url 'whisper_app:index' %}" class="btn btn-primary">Upload Audio</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Copy text functionality
+    document.querySelectorAll('.copy-text').forEach(button => {
+        button.addEventListener('click', async () => {
+            const text = button.dataset.text;
+            try {
+                await navigator.clipboard.writeText(text);
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                    button.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text:', err);
+            }
+        });
+    });
+
+    // Status row highlighting
+    document.querySelectorAll('.transcription-row').forEach(row => {
+        const status = row.querySelector('.status-badge').textContent.trim();
+        if (status === 'Failed') {
+            row.classList.add('error-row');
+        } else if (status === 'Completed') {
+            row.classList.add('success-row');
+        }
+    });
+</script>
+{% endblock %}
