@@ -1,7 +1,11 @@
 django>=4.2.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
 openai-whisper
 torch
 torchaudio
 numpy
 python-dotenv
 pillow
+django-filter
+drf-yasg
